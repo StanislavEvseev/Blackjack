@@ -85,13 +85,15 @@ func main() {
 
 	fmt.Println("Type hit or stand") //ход игрока. Игроку доступны две команды: ЕЩЁ (hit) и СЕБЕ (stand)
 	for !g.pl_finished {             //игрок завершит ход при вводе команды "СЕБЕ" ИЛИ в случае перебора (<21 очков)
+		g.mu.Lock()
 		fmt.Scanf("%s\n", &input) //ожидаем действие игрока
 		if input == "hit" {       //игрок ввёл команду "ещё"
 			fmt.Println("You picking the card:")
-			g.mu.Lock()
+			g.mu.Unlock()
 			g.pl_score, g.card_number, g.ace = g.Pick(g.pl_score) //новый счёт, карта, является ли карта тузом = Pick(счёт игрока на данный момент)
-			g.Deck[g.card_number] = Card{g.card_name, 1, 0}       //присваиваем карте статус "в руке игрока" чтобы больше она не вытаскивалась
-			if g.ace {                                            //если карта оказалась тузом:
+			g.mu.Lock()
+			g.Deck[g.card_number] = Card{g.card_name, 1, 0} //присваиваем карте статус "в руке игрока" чтобы больше она не вытаскивалась
+			if g.ace {                                      //если карта оказалась тузом:
 				g.pl_aces++ // запомним, что у игрока +1 туз
 			}
 			if g.pl_score > 21 && g.pl_aces > 0 { //ситуация перебора: если у игрока остались тузы, которые можно объявить единицей, то
@@ -110,12 +112,14 @@ func main() {
 	}
 
 	fmt.Println("Ход дилера") //ход дилера
-	g.mu.Lock()
+
 	for !g.cp_finished { //дилер завершит ход по достижении 18 очков ИЛИ в случае перебора (<21 очков)
 		fmt.Println("I picking the card:")
+		g.mu.Unlock()
 		g.cp_score, g.card_number, g.ace = g.Pick(g.cp_score) //новый счёт, карта, является ли карта тузом = Pick(счёт дилера на данный момент)
-		g.Deck[g.card_number] = Card{g.card_name, 2, 0}       //присваиваем карте статус "в руке дилера" чтобы она более не вытаскивалась
-		if g.ace {                                            //если карта оказалась тузом:
+		g.mu.Lock()
+		g.Deck[g.card_number] = Card{g.card_name, 2, 0} //присваиваем карте статус "в руке дилера" чтобы она более не вытаскивалась
+		if g.ace {                                      //если карта оказалась тузом:
 			g.cp_aces++ // запомним, что у дилера +1 туз
 		}
 		if g.cp_score > 21 && g.cp_aces > 0 { //ситуация перебора: если у дилера остались тузы, которые можно объявить единицей, то
@@ -125,6 +129,7 @@ func main() {
 		fmt.Println("My score is:", g.cp_score)
 		if g.cp_score > 16 { //счёт дилера достиг 17
 			g.cp_finished = true //завершение игры
+			g.mu.Unlock()
 		}
 	}
 	fmt.Println(g.Gameover()) //вывод результата игры
